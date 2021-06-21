@@ -1,0 +1,3491 @@
+---
+title: "Parkinson Flies"
+output: learnr::tutorial
+runtime: shiny_prerendered
+description: "Comparative Analysis of PD flies and Control flies"
+---
+
+```{r setup, include=FALSE}
+
+library(lme4)
+library(multcomp)
+library(dunn.test)
+library(rcompanion)
+library(tidyr)
+library(ggplot2)
+library(gridExtra)
+library(reshape)
+library(ade4)
+library(grid)
+library(gtable)
+library(PMCMR)
+library(multcompView)
+library(splitstackshape)
+library(readxl)
+library(reshape2)
+library(survival)
+library(maps)
+library(dplyr)
+library(vegan)
+library(cowplot)
+library(stringr)
+library(exactRankTests)
+library(readr)
+
+
+library(devtools)
+library(usethis)
+library(roxygen2)
+library(learnr)
+
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/make_taxon_plots_condense_2var_0.0.2.R"))
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/g_legend.R"))
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/pcoa_2var_0.0.2.R"))
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/make_ancom_plots_0.0.2.R"))
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/ancom_tests.R"))
+source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/16sscripts/ancom_v2.0.R"))
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Beginning Bash Work
+
+### Using QIIME2
+
+{bash}
+
+#conda deactivate
+source activate qiime2-2020.8
+
+cd ~/Evan_stuff/CURA_project/
+
+name=call19
+mapper=call_mapper.tsv
+seqsdir=reads/
+
+
+filter out wolbachia reads
+qiime taxa filter-table \
+  --i-table table-$name"".qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --p-exclude Wolbachia \
+  --o-filtered-table table-$name""_noW.qza
+  
+filter other contents
+qiime taxa filter-table \
+  --i-table table-$name"".qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --p-exclude Mitochondira,Chloroplast,Archaea,Wolbachia \
+  --o-filtered-table table-$name""_noOther.qza
+
+qiime feature-table summarize \
+--i-table table-$name"".qza \
+--o-visualization table-$name"".qzv \
+--m-sample-metadata-file $mapper
+
+
+make a tree
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs-$name"".qza \
+  --o-alignment aligned-rep-seqs-$name"".qza \
+  --o-masked-alignment masked-aligned-rep-seqs-$name"".qza \
+  --o-tree unrooted-tree-$name"".qza \
+  --o-rooted-tree rooted-tree-$name"".qza
+  
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name UCLA 164 $mapper "lab = 'UCLA'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Stanford 2974 $mapper "lab = 'Stanford'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Bellen 1565 $mapper "lab = 'Bellen'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Pallanck 7188 $mapper "lab = 'Pallanck'"
+
+bash ../16sscripts/standard_qiime3.sh $name"" $name bloomington 1565 $mapper "lab = 'Bloomington'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name All 2000 $mapper "lab IN ('UCLA','Stanford','Bellen','Pallanck')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pinks 1565 $mapper "genotype IN ('PG (Control)','pink15')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pinks_noControl 1565 $mapper "genotype IN ('pink15')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name iPLA_noControl 1565 $mapper "genotype IN ('iPLA2-VIA[Delta174]', 'iPLA2-VIA[Delta192]')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name iPLA 1565 $mapper "genotype IN ('iPLA2-VIA Control', 'iPLA2-VIA[Delta174]', 'iPLA2-VIA[Delta192]')"
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name bellen_mutants 1565 $mapper "lab = 'Bellen' AND genotype_class = 'mutant'"
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name DJ_w1118 1565 $mapper "genotype IN ('DJ-1 _/_','w1118') AND lab = 'Bloomington'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pBac_w1118 1565 $mapper "genotype IN ('pBac{WH}ntc[f07259)','w1118') AND lab = 'Bloomington'"
+
+
+
+## UCLA (Pink15)
+
+### Setup for UCLA 
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the UCLA lab flies:
+
+```{r UCLA_setup, exercise=TRUE, exercise.line = 5}
+file_path <- "UCLA"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### UCLA Unweighted Permanova
+
+Creation of the Unweighted Permanova for UCLA:
+
+```{r uwPUCLA, exercise=TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### UCLA Weighted Permanova
+
+Creation of the Weighted Permanova for UCLA:
+
+```{r wPUCLA, exercise=TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### UCLA Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for UCLA:
+
+```{r bcPUCLA, exercise=TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### UCLA Shannon Richness Test
+
+```{r srUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+
+```
+
+### UCLA Ace Richness Test
+
+```{r arUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+
+```
+
+### UCLA Taxon Plot (genus level)
+
+```{r tpUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.0015 ### relative percent abundance in chart -> taxa that are at least this abundant overall will show up
+the_two_var = "onevar" ## ignore
+the_id = "X.SampleID" ## ignore
+plot_color = c("black","yellow", "grey","brown","green","blue","red")
+plot_order = c("Pasteurellales", "Enterobacteriaceae","Lactobacillaceae","Enterococcus", "Lactobacillus","Acetobacter")
+x_val = "genotype"
+read_depth = 2000
+map_path = "-call19" ## name of the taxonomy file; write instructions on how to create a taxonomy file - taxonomy_forR.csv
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("PG (Control)", "pink15 (Mutant)")
+names(flies.labs) <- c("PG (Control)", "pink15")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### UCLA Unweighted PCoA
+
+```{r puUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs <- c("PG (Control)", "pink15 (Mutant)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+
+```
+
+### UCLA Weighted PCoA
+```{r pwUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs <- c("PG (Control)", "pink15 (Mutant)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### UCLA Bray Curtis PCoA
+
+```{r pbcUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs <- c("PG (Control)", "pink15 (Mutant)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### UCLA ANCOM Report (genus level)
+
+```{r ancomUCLA, exercise = TRUE}
+
+file_path <- "UCLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+map_path = "-call19"
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = "blue"
+breaks = c("PG (Control)", "pink15")
+labs = c("PG (Control)", "pink15 (Mutant)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs) 
+
+```
+
+
+
+## Stanford (pink1 B9 FM6)
+
+### Setup for Stanford 
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the Stanford lab flies:
+
+```{r Stanford_Setup, exercise=TRUE}
+file_path <- "Stanford"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+```
+
+### Stanford Unweighted Permanova
+
+Creation of the Unweighted Permanova for Stanford:
+
+```{r uwPStan, exercise=TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Stanford Weighted Permanova
+
+Creation of the Weighted Permanova for Stanford:
+
+```{r wPStan, exercise=TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Stanford Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for Stanford:
+
+```{r bcPStan, exercise=TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Stanford Shannon Richness Test
+
+```{r srStan, exercise=TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 Mutants"), labels=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Stanford Ace Richness Test
+
+```{r arStan, exercise = TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 Mutants"), labels=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+
+```
+
+### Stanford Taxon Plot (genus level)
+
+```{r tpStan, exercise=TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black", "brown", "blue","red")
+plot_order = c( "Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 2974
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+names(flies.labs) <- c("pink1 B9 FM6 Mutants", "pink1 RV FM6 (Control)")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+
+```
+
+### Stanford Unweighted PCoA
+
+```{r puStan, exercise = TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+
+```
+
+### Stanford Weighted PCoA
+
+```{r pwStan, exercise = TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### Stanford Bray Curtis PCoA
+
+```{r pbcStan, exercise = TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### Stanford ANCOM report (genus level)
+
+```{r anStan, exercise = TRUE}
+
+file_path <- "Stanford"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+map_path = "-call19"
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("brown", "blue")
+breaks = c("pink1 B9 FM6 Mutants", "pink1 RV FM6 (Control)")
+labs = c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs) 
+```
+
+
+## Pallanck (park25)
+
+### Setup for Pallanck 
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the Pallanck lab flies:
+
+```{r Pallanck_Setup, exercise = TRUE}
+
+file_path <- "Pallanck"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### Pallanck Unweighted Permanova
+
+```{r uwPPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Pallanck Weighted Permanova
+
+```{r wPPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Pallanck Bray Curtis Permanova
+
+```{r bcPPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Pallanck Shannon Richness Test
+
+```{r srPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("parkrvA (Control)", "park25"), labels=c("parkrvA (Control)", "park25 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Pallanck Ace Richness Test
+
+```{r arPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("parkrvA (Control)", "park25"), labels=c("parkrvA (Control)", "park25 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### Pallanck Taxon Plot (genus level)
+
+```{r tpPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","brown","green","red")
+plot_order = c("Lactobacillaceae","Enterococcus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("park25 (Mutant)", "parkrvA (Control)")
+names(flies.labs) <- c("park25", "parkrvA (Control)")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### Pallanck Unweighted PCoA
+
+```{r puPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+
+```
+
+### Pallanck Weighted PCoA
+
+```{r pwPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+
+```
+
+### Pallanck Bray Curtis PCoA
+
+```{r pbcPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+
+```
+
+### Pallanck ANCOM report (genus level)
+
+```{r ancomPal, exercise = TRUE}
+
+file_path <- "Pallanck"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("green", "red")
+breaks = c("park25", "parkrvA (Control)")
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+
+```
+
+
+## Bellen (iPLA2-VIA)
+
+### Setup for Bellen 
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the Bellen lab flies:
+
+```{r Bellen_Setup, exercise = TRUE}
+
+file_path <- "Bellen"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### Bellen Unweighted Permanova
+
+Creation of the Unweighted Permanova for Bellen:
+
+```{r uwPBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Bellen Weighted Permanova
+
+Creation of the Weighted Permanova for Bellen:
+
+```{r wPBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Bellen Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for Bellen:
+
+```{r bcPBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Bellen Shannon Richness Test
+
+```{r srBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Bellen Ace Richness Test
+
+```{r arBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### Bellen Taxon Plot (genus level)
+
+```{r tpBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green1", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### Bellen Unweighted PCoA
+
+```{r puBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### Bellen Weighted PCoA
+
+```{r pwBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### Bellen Bray Curtis PCoA
+
+```{r pbcBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### Bellen ANCOM report (genus level)
+
+```{r ancomBel, exercise=TRUE}
+
+file_path <- "Bellen"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## Bellen Mutants (iPLA2-VIA[Delta174] and iPLA2-VIA[Delta192])
+
+### Setup for Bellen Mutants
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the Bellen lab mutant flies:
+
+```{r Bellen_Mutants_Setup, exercise = TRUE}
+
+file_path <- "bellen_mutants"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### Bellen Mutants Unweighted Permanova
+
+Creation of the Unweighted Permanova for Bellen Mutants:
+
+```{r uwPBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Bellen Mutants Weighted Permanova
+
+Creation of the Weighted Permanova for Bellen Mutants:
+
+```{r wPBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Bellen Mutants Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for Bellen Mutants:
+
+```{r bcPBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Bellen Mutants Shannon Richness Test
+
+```{r srBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Bellen Mutants Ace Richness Test
+
+```{r arBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### Bellen Mutants Taxon Plots (genus level)
+
+```{r tpBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green1", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### Bellen Mutants Unweighted PCoA
+
+```{r puBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### Bellen Mutants Weighted PCoA
+
+```{r pwBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### Bellen Mutants Bray Curtis PCoA
+
+```{r bcBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### Bellen Mutants ANCOM report (genus level)
+
+```{r ancomBelM, exercise=TRUE}
+
+file_path <- "bellen_mutants"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## iPLAs (No Control)
+
+### Setup for iPLAs (No Control)
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the iPLA (No Control) flies:
+
+```{r iPLAnc_Setup, exercise = TRUE}
+
+file_path <- "iPLA_noControl"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### iPLAs (No Control) Unweighted Permanova
+
+Creation of the Unweighted Permanova for iPLA (No Control) flies:
+
+```{r uwPiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### iPLAs (No Control) Weighted Permanova
+
+Creation of the Weighted Permanova for iPLA (No Control) flies:
+
+```{r wPiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### iPLAs (No Control) Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for iPLA (No Control) flies:
+
+```{r bcPiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### iPLAs (No Control) Shannon Richness Test
+
+```{r sriPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(lab) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, lab, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$lab)
+
+shannon_table <- shannon_table %>% group_by(lab) %>% summarise(X, lab, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, lab, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15))  +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("lab"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### iPLAs (No Control) Ace Richness Test
+
+```{r ariPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(lab) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, lab, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$lab)
+
+ace_table <- ace_table %>% group_by(lab) %>% summarise(X, lab, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, lab, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("lab"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### iPLAs (No Control) Taxon Plot (genus level)
+
+```{r tpiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "twovar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow", "brown","blue","red")
+plot_order = c("Pasteurellales" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### iPLAs (No Control) Unweighted PCoA
+
+```{r puiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "lab"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("Bellen", "Bloomington")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) +
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### iPLAs (No Control) Weighted PCoA
+
+```{r pwiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "lab"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("Bellen", "Bloomington")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### iPLAs (No Control) Bray Curtis PCoA
+
+```{r pbciPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "lab"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("Bellen", "Bloomington")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### iPLAs (No Control) ANCOM report (genus level)
+
+```{r ancomiPLAnc, exercise=TRUE}
+file_path <- "iPLA_noControl"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "lab"
+var2 = "lab"
+var3 = "lab"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="lab"
+adj.formula= "lab"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "lab"
+taxonomic_level = "genus"
+ancom_colors = c("yellow")
+breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## iPLAs
+
+### Setup for iPLAs
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the iPLA flies:
+
+```{r iPLA_Setup, exercise = TRUE}
+
+file_path <- "iPLA"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### iPLAs Unweighted Permanova
+
+Creation of the Unweighted Permanova for iPLA flies:
+
+```{r uwPiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### iPLAs Weighted Permanova
+
+Creation of the Weighted Permanova for iPLA flies:
+
+```{r wPiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### iPLAs Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for iPLA flies:
+
+```{r bcPiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### iPLAs Shannon Richness Test
+
+```{r sriPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### iPLAs Ace Richness Test
+
+```{r ariPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### iPLAs Taxon Plot (genus level)
+
+```{r tpiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "twovar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green1", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### iPLAs Unweighted PCoA
+
+```{r puiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("Mutant", "Control")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### iPLAs Weighted PCoA
+
+```{r pwiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("Mutant", "Control")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### iPLAs Bray Curtis PCoA
+
+```{r pbciPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("Mutant", "Control")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### iPLAs ANCOM report (genus level)
+
+```{r ancomiPLA, exercise=TRUE}
+file_path <- "iPLA"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/iPLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+
+## All Labs (excluding Bloomington)
+
+### Setup for All Labs
+
+*This is going to be very similar for every lab or combination we run*
+
+Specifying the files and directory for the All lab flies:
+
+```{r All_Setup, exercise = TRUE}
+
+file_path <- "All"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### All Labs Unweighted Permanova
+
+Creation of the Unweighted Permanova for All Labs:
+
+```{r uwPall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### All Labs Weighted Permanova
+
+Creation of the Weighted Permanova for All Labs:
+
+```{r wPall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### All Labs Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for All Labs:
+
+```{r bcPall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### All Labs Shannon Richness Test
+
+```{r srall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype_class) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype_class) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype_class, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("control", "mutant"), labels=c("Control", "Mutant")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype class"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### All Labs Ace Richness Test
+
+```{r arall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype_class) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype_class) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype_class, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("control", "mutant"), labels=c("Control", "Mutant")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype class"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### All Labs Taxon Plot (genus level)
+
+```{r tpall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype_class"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype_class"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("Control", "Mutant")
+names(flies.labs) <- c("control", "mutant")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### All Labs Unweighted PCoA
+
+```{r puall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### All Labs Weighted PCoA
+
+```{r pwall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### All Labs Bray Curtis PCoA
+
+```{r pbcall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype_class"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("Control", "Mutant")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### All Labs ANCOM report (genus level)
+
+```{r ancomall, exercise=TRUE}
+file_path <- "All"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/All/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype_class"
+var2 = "genotype_class"
+var3 = "genotype_class"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype_class"
+adj.formula= "genotype_class"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype_class"
+taxonomic_level = "genus"
+ancom_colors = "brown"
+breaks = c("control", "mutant")
+labs = c("Control", "Mutant")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## Bloomington (DJ-1 _/_)
+
+### Setup for Bloomington (DJ)
+
+*This is going to be very similar for every lab or combination we run*
+*These are kept separate from the other labs because they contained Wolbachia*
+
+Specifying the files and directory for the Bloomington (DJ) lab flies:
+
+```{r DJ_Setup, exercise = TRUE}
+
+file_path <- "DJ_w1118"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### Bloomington (DJ) Unweighted Permanova
+
+Creation of the Unweighted Permanova for Bloomington (DJ):
+
+```{r uwPDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Bloomington (DJ) Weighted Permanova
+
+Creation of the Weighted Permanova for Bloomington (DJ):
+
+```{r wPDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Bloomington (DJ) Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for Bloomington (DJ):
+
+```{r bcPDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Bloomington (DJ) Shannon Richness Test
+
+```{r srDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("DJ-1 _/_", "w1118"), labels=c("DJ-1 _/_ (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Bloomington (DJ) Ace Richness Test
+
+```{r arDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("DJ-1 _/_", "w1118"), labels=c("DJ-1 _/_ (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### Bloomington (DJ) Taxon Plot (genus level)
+
+```{r tpDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "twovar"
+the_id = "X.SampleID"
+plot_color = c("black","black","black","black","black","yellow","brown","green","blue","red")
+plot_order = c("Corynebacterium","Commensalibacter", "Leuconostoc", "Providencia", "Pasteurellales", "Lactobacillaceae", "Enterococcus", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+names(flies.labs) <- c("DJ-1 _/_", "w1118")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### Bloomington (DJ) Unweighted PCoA
+
+```{r puDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### Bloomington (DJ) Weighted PCoA
+
+```{r pwDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### Bloomington (DJ) Bray Curtis PCoA
+
+```{r pbcDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### Bloomington (DJ) ANCOM report (genus level)
+
+```{r ancomDJ, exercise=TRUE}
+file_path <- "DJ_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/DJ_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("green", "black")
+breaks = c("DJ-1 _/_", "w1118")
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## Bloomington (pBac{WH}ntc[f07259))
+
+### Setup for Bloomington (pBac)
+
+*This is going to be very similar for every lab or combination we run*
+*These are kept separate from the other labs because they contained Wolbachia*
+
+Specifying the files and directory for the Bloomington (pBac) lab flies:
+```{r pBac_Setup, exercise = TRUE}
+
+file_path <- "pBac_w1118"
+
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+```
+
+### Bloomington (pBac) Unweighted Permanova
+
+Creation of the Unweighted Permanova for Bloomington (pBac):
+
+```{r uwPpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+```
+
+### Bloomington (pBac) Weighted Permanova
+
+Creation of the Weighted Permanova for Bloomington (pBac):
+
+```{r wPpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_weighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sw_permanova <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSW)
+```
+
+### Bloomington (pBac) Bray Curtis Permanova
+
+Creation of the Bray Curtis Permanova for Bloomington (pBac):
+
+```{r bcPpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
+
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations = 1000)
+
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+```
+
+### Bloomington (pBac) Shannon Richness Test
+
+```{r srpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+shannon_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pBac{WH}ntc[f07259)", "w1118"), labels=c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title("genotype"),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+shannon_plot
+```
+
+### Bloomington (pBac) Ace Richness Test
+
+```{r arpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+
+ace_file <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pBac{WH}ntc[f07259)", "w1118"), labels=c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title("genotype"),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+ace_plot
+```
+
+### Bloomington (pBac) Taxon Plot (genus level)
+
+```{r tppBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","black","black","black","brown","green","blue","red")
+plot_order = c("Corynebacterium","Commensalibacter", "Leuconostoc", "Lactobacillaceae", "Enterococcus", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+names(flies.labs) <- c("pBac{WH}ntc[f07259)", "w1118")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+```
+
+### Bloomington (pBac) Unweighted PCoA
+
+```{r pupBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+
+plot_uw2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_uw2016
+```
+
+### Bloomington (pBac) Weighted PCoA
+
+```{r pwpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "weighted Unifrac"
+legend_position = "bottom"
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+
+plot_w2016 <- pcoa_1var(urlpath = urlfile, folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_w2016
+```
+
+### Bloomington (pBac) Bray Curtis PCoA
+
+```{r pbcpBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+folder_name = paste0(file_path, "/bray_curtis")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "Bray Curtis"
+legend_position = "bottom"
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+
+plot_bc2016 <- pcoa_1var(urlpath = urlfile,folder_name=folder_name, mapper_file = mapper_url, var1=var1, var1_colors=var1_colors,title_name_add=title_name_add, legend_position = legend_position)
+
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+plot_bc2016
+```
+
+### Bloomington (pBac) ANCOM report (genus level)
+
+```{r ancompBac, exercise=TRUE}
+file_path <- "pBac_w1118"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/pBac_w1118/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+main.var="genotype"
+adj.formula= "genotype"
+map_path = "-call19"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "genus"
+ancom_colors = c("black", "brown", "black")
+breaks = c("pBac{WH}ntc[f07259)", "w1118")
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+
+make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+## Krona Chart
+
+```{r krona, exercise = TRUE}
+library(ggrepel)
+
+taxonomy <- "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/krona_work/taxonomy.tsv"
+taxonomyR <- "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/krona_work/taxonomy_forR.csv"
+table <- "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/krona_work/table.from_biom.tsv"
+
+aaa <- read.table(url(taxonomy), header = T, sep = "\t")
+aaa[1,]
+
+otu_table <- read.table(url(table), comment.char="", header=T, sep="\t", fill=T, skip=1) %>% left_join(read.csv(url(taxonomyR)), by=c("X.OTU.ID"="Feature.ID"))
+
+## make melted OTU table
+otu_table$OTU <- as.character(otu_table$X)
+otu2 <- otu_table[,c("X.OTU.ID","kingdom","phylum","class","order","family","genus","species","OTU")]
+otu2$OTU <- as.character(otu2$OTU)
+melted_table <- data.frame(OTU_ID=character(),Count=integer(), Sample=character(), stringsAsFactors = F)
+for (i in 2:(dim(otu_table)[2]-7-1)) {
+  rm(new_table)
+  new_table <- data.frame(OTU=as.character(otu_table$OTU),Count=as.integer(otu_table[,i]),Sample=as.character(colnames(otu_table)[i]), stringsAsFactors = F)
+  melted_table <- rbind(melted_table, new_table)
+}
+
+names(otu_table)
+
+## sanity check
+colnames(otu_table)
+dim(melted_table)[1]/(59)==dim(new_table)[1]
+
+
+## start merging
+melted_table_no0 <- melted_table %>% filter(Count>-1)
+mt0 <- melted_table_no0 %>% inner_join(otu2, by=c("OTU"="X.OTU.ID"))
+mt0[1,]
+# mt0$sample2 <- gsub("\\.","", mt0$Sample)
+# mt0$sample2 <- gsub("_","", mt0$sample2)
+# map2$sample2 <- gsub("_","",map2$id)
+# map2$sample2 <- gsub("-","",map2$sample2)
+# mt0[1,]
+#mt1 <- mt0 %>% inner_join(map2)
+mt1 <- mt0
+mt2 <- mt1 %>% arrange(phylum, class,order,family,genus,species,OTU)
+mt2$sort_order <- c(1:dim(mt2)[1])
+mt2$class <- paste(mt2$phylum, mt2$class,sep="_")
+mt2$order <- paste(mt2$class, mt2$order,sep="_")
+mt2$family <- paste(mt2$order, mt2$family,sep="_")
+mt2$genus <- paste(mt2$family, mt2$genus,sep="_")
+mt2$species <- paste(mt2$genus, mt2$species,sep="_")
+mt2$OTU <- paste(mt2$species, mt2$OTU,sep="_")
+
+subset_column <- ""
+subset_category <- ""
+perc_rep <- 0.025
+in_title <- ""
+
+#make_krona <- function(mt2, subset_column, subset_category, perc_rep, in_title) {
+ # mt3 <- mt2 %>% filter(get(subset_column)==subset_category)
+mt3 <- mt2
+mt3[1,]
+
+mt3
+mt4 <- mt3 %>% filter(Count > 0)
+
+
+  jphy <- mt3 %>% group_by(phylum) %>% filter(Count > 0) %>% summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jphy_order <- order(jphy[,"sort_order"])
+  jphy <- jphy[jphy_order, , drop = FALSE]
+  jphy <- jphy %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=1,xmax=2, level = "phylum", taxon=phylum, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-phylum)
+  jphy %>% filter(perc_phylabun > perc_rep)
+  phy_colors <- jphy %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("blue","red")) %>% dplyr::select(taxon, color2)
+  jphy2 <- jphy %>%
+    full_join(phy_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jclass <- mt3 %>% group_by(class) %>% filter(Count > 0) %>%  summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jclass_order <- order(jclass[,"sort_order"])
+  jclass <- jclass[jclass_order, , drop = FALSE]
+  jclass <- jclass %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=2,xmax=3, level = "class", taxon=class, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-class)
+  jclass %>% filter(perc_phylabun > perc_rep)
+  class_colors <- jclass %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("blue","red","red")) %>% dplyr::select(taxon, color2)
+  jclass2 <- jclass %>%
+    full_join(class_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jorder <- mt3 %>% group_by(order) %>% filter(Count > 0) %>% summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jorder_order <- order(jorder[,"sort_order"])
+  jorder <- jorder[jorder_order, , drop = FALSE]
+  jorder <- jorder %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=3,xmax=4, level = "order", taxon=order, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-order)
+  jorder %>% filter(perc_phylabun > perc_rep)
+  order_colors <- jorder %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("blue","red","yellow")) %>% dplyr::select(taxon, color2)
+  jorder2 <- jorder %>%
+    full_join(order_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jfamily <- mt3 %>% group_by(family) %>% filter(Count > 0) %>% summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jfamily_order <- order(jfamily[,"sort_order"])
+  jfamily <- jfamily[jfamily_order, , drop = FALSE]
+  jfamily <- jfamily %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=4,xmax=5, level = "family", taxon=family, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-family)
+  jfamily %>% filter(perc_phylabun > perc_rep)
+  family_colors <- jfamily %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("green","blue","red","yellow")) %>% dplyr::select(taxon, color2)
+  jfamily2 <- jfamily %>%
+    full_join(family_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jgenus <- mt3 %>% group_by(genus) %>% filter(Count > 0) %>% summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jgenus_order <- order(jgenus[,"sort_order"])
+  jgenus <- jgenus[jgenus_order, , drop = FALSE]
+  jgenus <- jgenus %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=5,xmax=6, level = "genus", taxon=genus, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-genus)
+  jgenus %>% filter(perc_phylabun > perc_rep)  %>% dplyr::select(ymax, ymin, taxon)
+  genus_colors <- jgenus %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("green","brown","blue","red","yellow")) %>% dplyr::select(taxon, color2)
+  jgenus2 <- jgenus %>%
+    full_join(genus_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jspecies <- mt3 %>% group_by(species) %>% filter(Count > 0) %>% summarize(sort_order=first(sort_order), phylum.abun = sum(Count), color="black")
+  jspecies_order <- order(jspecies[,"sort_order"])
+  jspecies <- jspecies[jspecies_order, , drop = FALSE]
+  jspecies <- jspecies %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=6,xmax=7, level = "species", taxon=species, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-species)
+  jspecies %>% filter(perc_phylabun > perc_rep) %>% dplyr::select(ymax, ymin, taxon)
+  species_colors <- jspecies %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("green","brown","blue","red","yellow")) %>% dplyr::select(taxon, color2)
+  jspecies2 <- jspecies %>%
+    full_join(species_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jOTU <- mt3 %>% group_by(OTU) %>% filter(Count > 0) %>% summarize(phylum.abun = sum(Count), sort_order=first(sort_order), color="black")
+  jOTU_order <- order(jOTU[,"sort_order"])
+  jOTU <- jOTU[jOTU_order, , drop = FALSE]
+  jOTU <- jOTU %>% mutate(ymax=cumsum(phylum.abun), ymin=c(0, head(ymax, n=-1)), xmin=7,xmax=8, level = "OTU", taxon=OTU, perc_phylabun = phylum.abun/sum(phylum.abun)) %>% dplyr::select(-OTU)
+  jOTU %>% filter(perc_phylabun > perc_rep)
+  OTU_colors <- jOTU %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("blue","magenta","green","brown","black","grey","orange","red")) %>% dplyr::select(taxon, color2)
+  OTU_colors <- jOTU %>% filter(perc_phylabun>perc_rep) %>% mutate(color2 = c("black")) %>% dplyr::select(taxon, color2)
+  jOTU2 <- jOTU %>%
+    full_join(OTU_colors, by = "taxon") %>%
+    rowwise() %>%
+    mutate(color2 = ifelse(is.na(color2),"black",color2)) %>%
+    ungroup()
+
+  jphy$taxon <- as.character(jphy$taxon); jclass$taxon <- as.character(jclass$taxon); jorder$taxon <- as.character(jorder$taxon); jfamily$taxon <- as.character(jfamily$taxon); jgenus$taxon <- as.character(jgenus$taxon);  jspecies$taxon <- as.character(jspecies$taxon); jOTU$taxon <- as.character(jOTU$taxon)
+
+  krona <- bind_rows(jphy2,jclass2,jorder2,jfamily2,jgenus2,jspecies2,jOTU2)
+  str(krona)
+  col <- krona$color2
+  names(col) <- krona$taxon
+
+
+  krona_labels <- c(order_colors$taxon, family_colors$taxon,genus_colors$taxon,species_colors$taxon,OTU_colors$taxon)
+
+
+  labels_df <- krona %>%
+    mutate(label_ypos=ifelse(taxon %in% krona_labels,
+                             (ymax+ymin)/2,
+                             NA),
+           label_xpos=ifelse(taxon %in% krona_labels,
+                             (xmin+xmax)/2,
+                             NA),
+           taxon3 = gsub("^.*_","", taxon),
+           taxon3 = gsub("^.*_","", taxon)
+           ) %>%
+    mutate(taxon2=ifelse((level=="OTU"|taxon3==""),
+                         NA,
+                         taxon3)) %>%
+    dplyr::select(taxon, taxon2, label_ypos,label_xpos,phylum.abun)
+  labels_df
+
+  label_ypos <-labels_df$label_ypos; names(label_ypos) <- as.character(labels_df$taxon)
+  label_xpos <- labels_df$label_xpos; names(label_xpos) <- as.character(labels_df$taxon)
+  label_taxa <- as.character(labels_df$taxon2); names(label_taxa) <- as.character(labels_df$taxon)
+
+
+  in_title <- "krona for PD datasets"
+
+  library(ggrepel)
+  ggplot(krona, aes(fill=color2,alpha = level,ymax=ymax, ymin=ymin, xmax=xmax, xmin=xmin)) +
+    # set xlim based on how many circles i plan on
+    geom_rect(colour="grey30") +  coord_polar(theta="y") + xlim(c(0, 8)) +
+    theme_bw() + theme(legend.position = "none") +theme(panel.grid=element_blank()) + theme(axis.text=element_blank()) +  theme(axis.ticks=element_blank(),  panel.border = element_blank()) +
+    scale_fill_identity() +
+    scale_alpha_discrete(range = c(1,1)) +
+    labs(title=in_title) +
+    #geom_label(aes(x=label_xpos, y=label_ypos), label=label_taxa, na.rm = T, inherit.aes = F, position = position_jitter(height = 1.5, width = 1.5))
+    geom_label_repel(aes(x=label_xpos, y=label_ypos), fill = "white", alpha = 0.75, label=label_taxa, na.rm = T, inherit.aes = F, segment.colour = "white", box.padding = 0, label.padding = 0.1, min.segment.length = 0, direction = "y")
+
+
+table(label_xpos)
+table(label_ypos)
+
+
+```
+
