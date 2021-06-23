@@ -1627,7 +1627,7 @@ plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", 
         )
       )+ 
   xlab("Fly Samples") + 
-  ylab("Fractional Abundance") +x
+  ylab("Fractional Abundance") +
   labs(fill = "Order Level Taxon")
 
 plot_2016S
