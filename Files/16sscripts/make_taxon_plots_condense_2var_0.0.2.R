@@ -214,7 +214,7 @@ make_taxon_plots_condense_2var_nolegend <- function(file_path, map_path="", var1
 
 make_taxon_plots_1var <- function(urlpath = urlpath, file_path, map_path="", var1, mapper_file = mapper_file, taxonomic_level="genus", the_two_var = "onevar", the_id="X.SampleID", rpa_in_chart = 0.05, plot_color = "", plot_order = "",x_val=the_id, read_depth = read_depth, legend_position=legend_position) {
 
-  taxon_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/"
+  taxon_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/"
 
   otu_table <- read.table(url(paste(urlpath,'core-metrics-results-',file_path,'/rarefied_table.txt',sep="")), comment.char="", header=T, sep="\t", fill=T, skip=1)%>%left_join(read.csv(url(paste0(taxon_url,'taxonomy',map_path,'/taxonomy_forR.csv'))), by=c("X.OTU.ID"="Feature.ID"))
   map2 <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t")

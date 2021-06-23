@@ -460,9 +460,9 @@ Specifying the files and directory for the Stanford lab flies:
 ```{r Stanford_Setup, exercise=TRUE}
 file_path <- "Stanford"
 
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
 
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 ```
 
 ### Stanford Unweighted Permanova
@@ -472,8 +472,8 @@ Creation of the Unweighted Permanova for Stanford:
 ```{r uwPStan, exercise=TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
 
@@ -497,8 +497,8 @@ Creation of the Weighted Permanova for Stanford:
 ```{r wPStan, exercise=TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -522,8 +522,8 @@ Creation of the Bray Curtis Permanova for Stanford:
 ```{r bcPStan, exercise=TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -545,8 +545,8 @@ plot(fig1_permSB)
 ```{r srStan, exercise=TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -591,8 +591,8 @@ shannon_plot
 ```{r arStan, exercise = TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -637,8 +637,8 @@ ace_plot
 ```{r tpStan, exercise=TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 taxonomic_level = "genus"
@@ -676,8 +676,8 @@ plot_2016S
 ```{r puStan, exercise = TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/unweighted_unifrac")
 var1 = "genotype"
@@ -700,8 +700,8 @@ plot_uw2016
 ```{r pwStan, exercise = TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/weighted_unifrac")
 var1 = "genotype"
@@ -723,8 +723,8 @@ plot_w2016
 ```{r pbcStan, exercise = TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/bray_curtis")
 var1 = "genotype"
@@ -746,8 +746,8 @@ plot_bc2016
 ```{r anStan, exercise = TRUE}
 
 file_path <- "Stanford"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Stanford/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 var2 = "genotype"
@@ -783,9 +783,9 @@ Specifying the files and directory for the Pallanck lab flies:
 
 file_path <- "Pallanck"
 
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
 
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 ```
 
@@ -794,8 +794,8 @@ mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park
 ```{r uwPPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
 
@@ -817,8 +817,8 @@ plot(fig1_permSU)
 ```{r wPPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -840,8 +840,8 @@ plot(fig1_permSW)
 ```{r bcPPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -863,8 +863,8 @@ plot(fig1_permSB)
 ```{r srPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -909,8 +909,8 @@ shannon_plot
 ```{r arPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -955,8 +955,8 @@ ace_plot
 ```{r tpPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 taxonomic_level = "genus"
@@ -993,8 +993,8 @@ plot_2016S
 ```{r puPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/unweighted_unifrac")
 var1 = "genotype"
@@ -1017,8 +1017,8 @@ plot_uw2016
 ```{r pwPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/weighted_unifrac")
 var1 = "genotype"
@@ -1041,8 +1041,8 @@ plot_w2016
 ```{r pbcPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/bray_curtis")
 var1 = "genotype"
@@ -1065,8 +1065,8 @@ plot_bc2016
 ```{r ancomPal, exercise = TRUE}
 
 file_path <- "Pallanck"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Pallanck/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Pallanck/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 var2 = "genotype"
@@ -1103,9 +1103,9 @@ Specifying the files and directory for the Bellen lab flies:
 
 file_path <- "Bellen"
 
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
 
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 ```
 
@@ -1116,8 +1116,8 @@ Creation of the Unweighted Permanova for Bellen:
 ```{r uwPBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
 
@@ -1141,8 +1141,8 @@ Creation of the Weighted Permanova for Bellen:
 ```{r wPBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -1166,8 +1166,8 @@ Creation of the Bray Curtis Permanova for Bellen:
 ```{r bcPBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -1189,8 +1189,8 @@ plot(fig1_permSB)
 ```{r srBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -1235,8 +1235,8 @@ shannon_plot
 ```{r arBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -1280,8 +1280,8 @@ ace_plot
 ```{r tpBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 taxonomic_level = "genus"
@@ -1318,8 +1318,8 @@ plot_2016S
 ```{r puBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/unweighted_unifrac")
 var1 = "genotype_class"
@@ -1341,8 +1341,8 @@ plot_uw2016
 ```{r pwBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/weighted_unifrac")
 var1 = "genotype_class"
@@ -1364,8 +1364,8 @@ plot_w2016
 ```{r pbcBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/bray_curtis")
 var1 = "genotype_class"
@@ -1387,8 +1387,8 @@ plot_bc2016
 ```{r ancomBel, exercise=TRUE}
 
 file_path <- "Bellen"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Bellen/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/Bellen/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 var2 = "genotype"
@@ -1423,9 +1423,9 @@ Specifying the files and directory for the Bellen lab mutant flies:
 
 file_path <- "bellen_mutants"
 
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
 
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 ```
 
@@ -1436,8 +1436,8 @@ Creation of the Unweighted Permanova for Bellen Mutants:
 ```{r uwPBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
 
@@ -1461,8 +1461,8 @@ Creation of the Weighted Permanova for Bellen Mutants:
 ```{r wPBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_weighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -1486,8 +1486,8 @@ Creation of the Bray Curtis Permanova for Bellen Mutants:
 ```{r bcPBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 flies_bc <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t")
 
@@ -1509,8 +1509,8 @@ plot(fig1_permSB)
 ```{r srBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -1555,8 +1555,8 @@ shannon_plot
 ```{r arBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 
@@ -1600,8 +1600,8 @@ ace_plot
 ```{r tpBelM, exercise=TRUE}
 
 file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 var1 = "genotype"
 taxonomic_level = "genus"
