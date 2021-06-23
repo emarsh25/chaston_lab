@@ -1524,7 +1524,7 @@ shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
 
 shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
 
-wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype)
 
 shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
 
