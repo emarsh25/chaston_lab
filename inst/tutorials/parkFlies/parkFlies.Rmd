@@ -1817,7 +1817,7 @@ map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep=
 
 flies_unifrac_table <- flies_bc %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
 
-fig1_Sb_permanova <- adonis2(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+fig1_Sb_permanova <- adonis2(flies_bc_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations = 1000)
 
 fig1_permSB <- tableGrob(round(fig1_Sb_permanova, 2), theme=ttheme_minimal())
 
