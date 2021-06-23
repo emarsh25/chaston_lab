@@ -376,8 +376,8 @@ plot_uw2016
 ```{r pwUCLA, exercise = TRUE}
 
 file_path <- "UCLA"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/UCLA/"
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
 folder_name = paste0(file_path, "/weighted_unifrac")
 var1 = "genotype"
