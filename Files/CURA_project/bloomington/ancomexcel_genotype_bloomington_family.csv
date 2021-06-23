@@ -1,0 +1,8 @@
+"","otu_id","W","detected_0.9","detected_0.8","detected_0.7","detected_0.6"
+"1","k__Bacteria_p__Actinobacteria_c__Actinobacteria_o__Actinomycetales_f__Corynebacteriaceae",6,TRUE,TRUE,TRUE,TRUE
+"2","k__Bacteria_p__Firmicutes_c__Bacilli_o__Lactobacillales_f__Enterococcaceae",6,TRUE,TRUE,TRUE,TRUE
+"3","k__Bacteria_p__Firmicutes_c__Bacilli_o__Lactobacillales_f__Lactobacillaceae",6,TRUE,TRUE,TRUE,TRUE
+"4","k__Bacteria_p__Firmicutes_c__Bacilli_o__Lactobacillales_f__Leuconostocaceae",6,TRUE,TRUE,TRUE,TRUE
+"5","k__Bacteria_p__Proteobacteria_c__Alphaproteobacteria_o__Rhodospirillales_f__Acetobacteraceae",6,TRUE,TRUE,TRUE,TRUE
+"6","k__Bacteria_p__Proteobacteria_c__Alphaproteobacteria_o__Rickettsiales_f__Rickettsiaceae",6,TRUE,TRUE,TRUE,TRUE
+"7","k__Bacteria_p__Proteobacteria_c__Gammaproteobacteria_o__Enterobacteriales_f__Enterobacteriaceae",6,TRUE,TRUE,TRUE,TRUE

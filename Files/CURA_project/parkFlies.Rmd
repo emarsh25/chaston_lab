@@ -1,0 +1,3246 @@
+---
+title: "Parkinson Fly Paper"
+output: learnr::tutorial
+runtime: shiny_prerendered
+editor_options: 
+  chunk_output_type: console
+---
+
+## 0.0.1 2021-5-20
+
+```{r get started}
+
+usethis::create_package("~/Park-Proj/parkFlies")
+
+usethis::use_tutorial("parkFlies", "Parkinson Flies", open = interactive())
+
+library(lme4)
+library(multcomp)
+library(dunn.test)
+library(rcompanion)
+library(tidyr)
+library(ggplot2)
+library(gridExtra)
+library(reshape)
+library(ade4)
+library(grid)
+library(gtable)
+library(PMCMR)
+library(multcompView)
+library(splitstackshape)
+library(readxl)
+library(reshape2)
+library(survival)
+library(maps)
+library(dplyr)
+library(vegan)#
+library(cowplot)
+library(stringr)
+
+library(devtools)
+library(usethis)
+library(roxygen2)
+library(learnr)
+
+
+source("~/Evan_stuff/16sscripts/make_taxon_plots_condense_2var_0.0.2.R")
+source("~/Evan_stuff/16sscripts/g_legend.R")
+source("~/Evan_stuff/16sscripts/pcoa_2var_0.0.2.R")
+# source("~/Evan_stuff/16sscripts/make_distance_plot_0.0.2.R")
+# source("~/Evan_stuff/16sscripts/ANCOM_updated_code.R")
+source("~/Evan_stuff/16sscripts/make_ancom_plots_0.0.2.R")
+source("~/Evan_stuff/16sscripts/ancom_tests.R")
+source("~/Evan_stuff/16sscripts/ancom_v2.0.R")
+
+
+usethis::create_package("~/Evan_stuff/CURA_project/tutorial")
+
+```
+
+```{bash}
+
+#conda deactivate
+source activate qiime2-2020.8
+
+cd ~/Evan_stuff/CURA_project/
+
+name=call19
+mapper=call_mapper.tsv
+seqsdir=reads/
+
+
+# filter out wolbachia reads
+qiime taxa filter-table \
+  --i-table table-$name"".qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --p-exclude Wolbachia \
+  --o-filtered-table table-$name""_noW.qza
+  
+qiime taxa filter-table \
+  --i-table table-$name"".qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --p-exclude Mitochondira,Chloroplast,Archaea,Wolbachia \
+  --o-filtered-table table-$name""_noOther.qza
+
+qiime feature-table summarize \
+--i-table table-$name"".qza \
+--o-visualization table-$name"".qzv \
+--m-sample-metadata-file $mapper
+
+
+## make a tree
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs-$name"".qza \
+  --o-alignment aligned-rep-seqs-$name"".qza \
+  --o-masked-alignment masked-aligned-rep-seqs-$name"".qza \
+  --o-tree unrooted-tree-$name"".qza \
+  --o-rooted-tree rooted-tree-$name"".qza
+  
+sdepth=115
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name UCLA 164 $mapper "lab = 'UCLA'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Stanford 2974 $mapper "lab = 'Stanford'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Bellen 1565 $mapper "lab = 'Bellen'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name Pallanck 7188 $mapper "lab = 'Pallanck'"
+
+bash ../16sscripts/standard_qiime3.sh $name"" $name bloomington 1565 $mapper "lab = 'Bloomington'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name All 2000 $mapper "lab IN ('UCLA','Stanford','Bellen','Pallanck')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pinks 1565 $mapper "genotype IN ('PG (Control)','pink15')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pinks_noControl 1565 $mapper "genotype IN ('pink15')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name iPLA_noControl 1565 $mapper "genotype IN ('iPLA2-VIA[Delta174]', 'iPLA2-VIA[Delta192]')"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name iPLA 1565 $mapper "genotype IN ('iPLA2-VIA Control', 'iPLA2-VIA[Delta174]', 'iPLA2-VIA[Delta192]')"
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name bellen_mutants 1565 $mapper "lab = 'Bellen' AND genotype_class = 'mutant'"
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name DJ_w1118 1565 $mapper "genotype IN ('DJ-1 _/_','w1118') AND lab = 'Bloomington'"
+
+bash ../16sscripts/standard_qiime3.sh $name""_noOther $name pBac_w1118 1565 $mapper "genotype IN ('pBac{WH}ntc[f07259)','w1118') AND lab = 'Bloomington'"
+
+
+qiime feature-table core-features \
+  --i-table table_looking_for_core_mut.qza \
+  --o-visualization core_looking_for_core_mut.qzv
+
+qiime taxa barplot \
+  --i-table table_looking_for_core_mut.qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --m-metadata-file $mapper \
+  --o-visualization taxa-bar-plots-_looking_for_core_mut.qzv
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name looking_for_core_control 1565 $mapper "genotype IN ('iPLA2-VIA Control','parkrvA (Control)','PG (Control)','pink1 RV FM6 (Control)') AND lab IN ('UCLA','Stanford','Bellen (Baylor)','Pallanck')"
+
+qiime feature-table core-features \
+  --i-table table_looking_for_core_control.qza \
+  --o-visualization core_looking_for_core_control.qzv
+
+qiime taxa barplot \
+  --i-table table_looking_for_core_control.qza \
+  --i-taxonomy taxonomy-$name"".qza \
+  --m-metadata-file $mapper \
+  --o-visualization taxa-bar-plots-_looking_for_core_control.qzv
+
+
+bash ../16sscripts/standard_qiime3.sh $name""_noW $name looking_for_core_control 1565 $mapper "genotype IN ('iPLA2-VIA Control','parkrvA (Control)','PG (Control)','pink1 RV FM6 (Control)') AND lab IN ('UCLA','Stanford','Bellen (Baylor)','Pallanck')"
+
+
+```
+
+#UCLA
+```{r UCLA}
+setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/')
+file_path <- "UCLA"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex)) # M F
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+
+adonis2(flies_unweighted_dm ~ genotype * vial_model, data= flies_unifrac_table, permutations=1000, by= 'terms')
+adonis(flies_unweighted_dm ~ genotype * sex * collection, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+
+plot(fig1_permSU)
+jpeg(h=800, w=1600, "unweighted_Permanova_UCLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_UCLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+jpeg(h=800, w=1600, "braycurtis_Permanova_UCLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_UCLA.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_UCLA.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.0015 ### relative percent abundance in chart -> taxa that are at least this abundant overall will show up
+the_two_var = "onevar" ## ignore
+the_id = "X.SampleID" ## ignore
+plot_color = c("black","yellow", "grey","brown","green","blue","red")
+plot_order = c("Pasteurellales", "Enterobacteriaceae","Lactobacillaceae","Enterococcus", "Lactobacillus","Acetobacter")
+x_val = "genotype"
+read_depth = 2000
+map_path = "-call19" ## name of the taxonomy file; write instructions on how to create a taxonomy file - taxonomy_forR.csv
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("PG (Control)", "pink15 (Mutant)")
+names(flies.labs) <- c("PG (Control)", "pink15")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+plot_2016S
+
+jpeg(h=800, w=1600, "Taxon_genus_right_UCLA.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "center"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+labs <- c("PG (Control)", "pink15 (Mutant)")
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+plot_uw2016
+
+jpeg(h=800, w=1600, "unweighted_PCoA_UCLA.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_UCLA.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "bray_curtis_PCoA_UCLA.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)) 
+# plot(plot_wuwlegend)
+
+# jpeg(h=1200, w=1600, "Figure_UCLA.jpg", units = "px", quality = 100, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2, 2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = "blue"
+breaks = c("PG (Control)", "pink15")
+labs = c("PG (Control)", "pink15 (Mutant)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs) 
+
+ANCOM()
+```
+
+```{r Stanford}
+urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
+
+mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
+
+my_data <- read_tsv(url(urlfile))
+
+
+setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/')
+file_path <- "Stanford"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_Standford.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_Stanford.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_Stanford.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 Mutants"), labels=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_Stanford.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 Mutants"), labels=c("pink1 RV FM6 (Control)", "pink1 B9 FM6 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_Stanford.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black", "brown", "blue","red")
+plot_order = c( "Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 2974
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+names(flies.labs) <- c("pink1 B9 FM6 Mutants", "pink1 RV FM6 (Control)")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_genus_right_Stanford.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+# legend_position = "right"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position) +
+#   theme(
+#       strip.text.x = element_text(
+#         size = 12, color = "black", face = "bold"
+#         )
+#       )+ 
+#   xlab("Fly Samples") + 
+#   ylab("Fractional Abundance") +
+#   labs(fill = "Order Level Taxon"))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs <- c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors,  title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_Stanford.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors,  title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_Stanford.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors,  title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_Stanford.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors,  title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors))
+# plot(plot_wuwlegend)
+# 
+# jpeg(h=1200, w=1600, "Figure_Stanford.jpg", units = "px", quality = 100, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S,
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("brown", "blue")
+breaks = c("pink1 B9 FM6 Mutants", "pink1 RV FM6 (Control)")
+labs = c("pink1 B9 FM6 (Mutant)", "pink1 RV FM6 (Control)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+
+```
+
+```{r Bellen}
+setwd('~/Evan_stuff/CURA_project/No_Wol/Bellen/')
+file_path <- "Bellen"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_Bellen.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_Bellen.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_Bellen.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_Bellen.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_Bellen.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green1", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+# flies.labs <- c("Control", "Mutant")
+# names(flies.labs) <- c("control", "mutant")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_right_genus_Bellen_class.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+# legend_position = "right"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("green","blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+# labs = c("control", "mutant")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_class_Bellen.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_class_Bellen.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_class_Bellen.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors))
+# plot(plot_wuwlegend)
+# 
+# 
+# jpeg(h=1200, w=1600, "Figure_Bellen_genotype.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+```{r bellen_mutant}
+setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/')
+file_path <- "bellen_mutants"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex)) # M F
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_Bellen_mutants.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+plot(fig1_permSW)
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+plot(fig1_permSB)
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+# flies.labs <- c("Control", "Mutant")
+# names(flies.labs) <- c("control", "mutant")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_right_genus_Bellen_mutants.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "bottom"
+# plot_fig1legend <- g_legend(make_taxon_plots_condense_2var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,var2 = var2,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "twovar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_Bellen_mutants.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_Bellen_mutants.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_Bellen_mutants.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position))
+# plot(plot_wuwlegend)
+
+jpeg(h=1200, w=1600, "Figure_bellen_mutants.jpg", units = "px", quality = 50, pointsize = 1)
+	grid.arrange(	
+		plot_2016S, plot_fig1legend, 
+		plot_bc2016,plot_uw2016, plot_w2016,
+		plot_wuwlegend,
+		fig1_permSB, fig1_permSU, fig1_permSW, 
+		widths = c(1,1,1),	
+		heights = c(2,2,.3,1.5),	
+		layout_matrix=rbind(		
+			c(1,1,2),		
+			c(3,4,5),
+			c(6,6,6),
+			c(7,8,9))
+		)
+dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+# taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+```{r Pallanck}
+setwd('~/Evan_stuff/CURA_project/No_Wol/Pallanck/')
+file_path <- "Pallanck"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_Pallanck.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_Pallanck.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_Pallanck.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("parkrvA (Control)", "park25"), labels=c("parkrvA (Control)", "park25 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_Pallanck.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("parkrvA (Control)", "park25"), labels=c("parkrvA (Control)", "park25 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_Pallanck.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","brown","green","red")
+plot_order = c("Lactobacillaceae","Enterococcus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("park25 (Mutant)", "parkrvA (Control)")
+names(flies.labs) <- c("park25", "parkrvA (Control)")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_genus_right_Pallanck.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "bottom"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position) + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+#   theme(
+#       strip.text.x = element_text(
+#         size = 8, color = "black"
+#         )
+#       )+ 
+#   xlab("Fly Samples") + 
+#   ylab("Fractional Abundance") +
+#   labs(fill = "Order Level Taxon")
+# )
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_Pallanck.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_Pallanck.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_Pallanck.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors))
+# plot(plot_wuwlegend)
+# 
+# jpeg(h=1200, w=1600, "Figure_Pallanck.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),		
+# 			c(2,3,4),
+# 			c(5,5,5),
+# 			c(6,7,8))
+# 		)
+# dev.off()
+
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green", "red")
+breaks = c("park25", "parkrvA (Control)")
+labs = c("park25 (Mutant)", "parkrvA (Control)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+
+```
+
+
+```{r All (Excluding Bloomington)}
+setwd('~/Evan_stuff/CURA_project/No_Wol/All/')
+file_path <- "All"
+mapper_file <- "call_mapper.tsv"
+
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+
+plot(fig1_permSU)
+jpeg(h=800, w=1600, "unweighted_Permanova_All.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_All.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+jpeg(h=800, w=1600, "braycurtis_Permanova_All.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype_class) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype_class) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype_class, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("control", "mutant"), labels=c("Control", "Mutant")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_All.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype_class) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype_class) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype_class, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("control", "mutant"), labels=c("Control", "Mutant")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_All.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+# 1A
+var1 = "genotype_class"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype_class"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+
+flies.labs <- c("Control", "Mutant")
+names(flies.labs) <- c("control", "mutant")
+
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_right_genus_All.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "bottom"
+# plot_fig1legend <- g_legend(make_taxon_plots_condense_2var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,var2 = var2,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "twovar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype_class"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+labs <- c("Control", "Mutant")
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_All.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_All.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype Class", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype Class", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "bray_curtis_PCoA_All.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position))
+# 
+# jpeg(h=1200, w=1600, "Figure_allFlies.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,2),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype_class"
+var2 = "lab"
+var3 = "genotype_class"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype_class"
+adj.formula= "lab"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype_class"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = "brown"
+breaks = c("control", "mutant")
+labs = c("Control", "Mutant")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)  
+
+
+```
+
+
+```{r Bloomington}
+setwd('~/Evan_stuff/CURA_project/bloomington/')
+
+file_path <- "bloomington"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$genotype_class)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection_lab))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+abc <- paste0(flies_unifrac_table$genotype_class, flies_unifrac_table$lab)
+table(list(abc))
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+# 1A
+var1 = "genotype"
+var2 = "genotype_class"
+taxonomic_level = "order"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","brown","green4","blue","red")
+plot_order = c("Actinomycetales" ,  "Rickettsiales","Enterobacteriales","Lactobacillales", "Rhodospirillales")
+x_val = "genotype_class"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "none"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+plot_2016S
+dev.off()
+
+legend_position = "bottom"
+plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+
+plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var2 = "genotype_class"
+var1_colors <-c("black","magenta","green1","orange","yellow","brown","green4","blue","red")
+var2_shape <- c(0, 15)
+title_name_add <- "unweighted Unifrac"
+legend_position = "none"
+plot_uw2016 <- pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016
+
+legend_position = "bottom"
+plot_wuwlegend <- g_legend(pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position))
+
+jpeg(h=1200, w=1600, "Figure_bloomington.jpg", units = "px", quality = 50, pointsize = 1)
+	grid.arrange(	
+		plot_2016S, plot_fig1legend, 
+		plot_bc2016,plot_uw2016, plot_w2016,
+		plot_wuwlegend,
+		fig1_permSB, fig1_permSU, fig1_permSW, 
+		widths = c(1,1,1),	
+		heights = c(2,2,.3,1.5),	
+		layout_matrix=rbind(		
+			c(1,1,2),		
+			c(3,4,5),
+			c(6,6,6),
+			c(7,8,9))
+		)
+dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+the_id <- "X.SampleID"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+taxonomic_level = "X.OTU.ID"
+taxonomic_level = "class"
+taxonomic_level = "order"
+taxonomic_level = "family"
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group) 
+
+```
+
+
+```{r pinks_noControl}
+setwd('~/Evan_stuff/CURA_project/No_Wol/pinks_noControl/')
+
+file_path <- "pinks_noControl"
+mapper_file <- "call_mapper.tsv"
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$genotype_class)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection_lab))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ lab * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+jpeg(h=800, w=1600, "unweighted_Permanova_pinksnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ lab * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_pinksnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ lab * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+jpeg(h=800, w=1600, "braycurtis_Permanova_pinksnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon # need to fix
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(lab) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, lab, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$lab)
+shannon_table <- shannon_table %>% group_by(lab) %>% summarise(X, lab, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, lab, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_pinksnc.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(lab) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, lab, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$lab)
+ace_table <- ace_table %>% group_by(lab) %>% summarise(X, lab, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, lab, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_pinksnc.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "lab"
+taxonomic_level = "genus"
+rpa_in_chart = 0.0015 ### relative percent abundance in chart -> taxa that are at least this abundant overall will show up
+the_two_var = "onevar" ## ignore
+the_id = "X.SampleID" ## ignore
+plot_color = c("black","black","black","black","black","black","black", "grey","brown","green","blue","red")
+plot_order = c("Corynebacterium", "Tsukamurella", "Providencia", "Swaminathania", "Leuconostoc", "Bifidobacteriaceae",  "Enterobacteriaceae","Lactobacillaceae","Enterococcus", "Lactobacillus","Acetobacter")
+x_val = "genotype"
+read_depth = 2000
+map_path = "-call19" ## name of the taxonomy file; write instructions on how to create a taxonomy file - taxonomy_forR.csv
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("Bloomington", "UCLA")
+names(flies.labs) <- c("Bloomington", "UCLA")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+jpeg(h=800, w=1600, "Taxon_genus_right_pinksnc.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "center"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "lab"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+labs <- c("Bloomington", "UCLA")
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_pinksnc.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_pinksnc.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "bray_curtis_PCoA_pinksnc.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)) 
+# plot(plot_wuwlegend)
+
+# jpeg(h=1200, w=1600, "Figure_UCLA.jpg", units = "px", quality = 100, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2, 2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "lab"
+var2 = "lab"
+var3 = "lab"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="lab"
+adj.formula= "lab"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "lab"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+ taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = "blue"
+breaks = c("Bloomington", "UCLA")
+labs = c("Bloomington", "UCLA")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs) 
+
+```
+
+```{r pinks (with controls)}
+setwd('~/Evan_stuff/CURA_project/No_Wol/pinks/')
+file_path <- "pinks"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex)) # M F
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+
+adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+plot(fig1_permSU)
+
+plot(fig1_permSU)
+jpeg(h=800, w=1600, "unweighted_Permanova_pinks.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_pinks.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+
+jpeg(h=800, w=1600, "braycurtis_Permanova_pinks.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon # need to fix
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2,# Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_pinks.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("PG (Control)", "pink15"), labels=c("PG (Control)", "pink15 (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_pinks.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.0015 ### relative percent abundance in chart -> taxa that are at least this abundant overall will show up
+the_two_var = "onevar" ## ignore
+the_id = "X.SampleID" ## ignore
+plot_color = c("black","black","black","black","black","black","black", "grey","brown","green","blue","red")
+plot_order = c("Corynebacterium", "Tsukamurella", "Providencia", "Swaminathania", "Leuconostoc", "Bifidobacteriaceae",  "Enterobacteriaceae","Lactobacillaceae","Enterococcus", "Lactobacillus","Acetobacter")
+x_val = "genotype"
+read_depth = 2000
+map_path = "-call19" ## name of the taxonomy file; write instructions on how to create a taxonomy file - taxonomy_forR.csv
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("PG (Control)", "pink15 (Mutant)")
+names(flies.labs) <- c("PG (Control)", "pink15")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+
+jpeg(h=800, w=1600, "Taxon_genus_right_pinks.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# legend_position = "center"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("red", "blue")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+labs <- c("PG (Control)", "pink15 (Mutant)")
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_pinks.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_pinks.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "bray_curtis_PCoA_pinks.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)) 
+# plot(plot_wuwlegend)
+
+# jpeg(h=1200, w=1600, "Figure_UCLA.jpg", units = "px", quality = 100, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2, 2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "lab"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "lab"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+ taxonomic_level = "X.OTU.ID"
+ taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = "blue"
+breaks = c("PG (Control)", "pink15")
+labs = c("PG (Control)", "pink15 (Mutant)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs) 
+
+```
+
+```{r iPLA_noControls}
+setwd('~/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/')
+
+file_path <- "iPLA_noControl"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_iPLAnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_iPLAnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_iPLAnc.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(lab) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, lab, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$lab)
+shannon_table <- shannon_table %>% group_by(lab) %>% summarise(X, lab, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, lab, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15))  +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_iPLAnc.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(lab) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, lab, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$lab)
+ace_table <- ace_table %>% group_by(lab) %>% summarise(X, lab, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, lab, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=lab, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_iPLAnc.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+
+# 1A
+var1 = "lab"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow", "brown","blue","red")
+plot_order = c("Pasteurellales", "Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "lab"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("Bellen", "Bloomington")
+names(flies.labs) <- c("Bellen", "Bloomington")
+# flies.labs <- c("Control", "Mutant")
+# names(flies.labs) <- c("control", "mutant")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_right_genus_iPLAnc.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+# legend_position = "right"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "lab"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("Bellen", "Bloomington")
+# labs = c("control", "mutant")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_iPLAnc.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_iPLAnc.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Lab", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Lab", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_iPLAnc.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors))
+# plot(plot_wuwlegend)
+# 
+# 
+# jpeg(h=1200, w=1600, "Figure_Bellen_genotype.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "lab"
+var2 = "lab"
+var3 = "lab"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="lab"
+adj.formula= "lab"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "lab"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green")
+breaks = c("Bellen", "Bloomington")
+labs = c("Bellen", "Bloomington")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+
+
+```
+
+```{r iPLA (with control)}
+setwd('~/Evan_stuff/CURA_project/No_Wol/iPLA/')
+file_path <- "iPLA"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$sample_type))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_iPLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_iPLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_iPLA.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_iPLA.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]"), labels=c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_iPLA.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+
+# 1A
+var1 = "genotype"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","yellow","green1", "brown","blue","red")
+plot_order = c("Pasteurellales", "Enterococcus" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+names(flies.labs) <- c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+# flies.labs <- c("Control", "Mutant")
+# names(flies.labs) <- c("control", "mutant")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 12, color = "black", face = "bold"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_right_genus_iPLA.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+# legend_position = "right"
+# plot_fig1legend <- g_legend(make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("green","blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+# labs = c("control", "mutant")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_iPLA.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_iPLA.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_iPLA.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position) + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+# scale_fill_manual(name="Genotype", labels=labs, values=var1_colors))
+# plot(plot_wuwlegend)
+# 
+# 
+# jpeg(h=1200, w=1600, "Figure_Bellen_genotype.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,1),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "lab"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "lab"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+# taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green")
+breaks = c("iPLA2-VIA Control", "iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+labs = c("iPLA2-VIA (Control)", "iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
+
+```{r DJ_w1118}
+
+setwd('~/Evan_stuff/CURA_project/DJ_w1118/')
+
+file_path <- "DJ_w1118"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$genotype_class)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection_lab))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_djw.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_djw.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_djw.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon #start here
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("DJ-1 _/_", "w1118"), labels=c("DJ-1 _/_ (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_djw.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("DJ-1 _/_", "w1118"), labels=c("DJ-1 _/_ (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_djw.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "twovar"
+the_id = "X.SampleID"
+plot_color = c("black","black","black","black","black","yellow","brown","green","blue","red")
+plot_order = c("Corynebacterium","Commensalibacter", "Leuconostoc", "Providencia", "Pasteurellales", "Lactobacillaceae", "Enterococcus", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+names(flies.labs) <- c("DJ-1 _/_", "w1118")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_genus_right_djw.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# plot_2016S + labs(x = "sample") + geom_bar(position = "stack") #strip.text
+# legend_position = "bottom"
+# plot_fig1legend <- g_legend(make_taxon_plots_condense_2var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,var2 = var2,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "twovar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_djw.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_djw.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_djw.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position))
+# 
+# jpeg(h=1200, w=1600, "Figure_Wol.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,2),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+ taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("green", "black")
+breaks = c("DJ-1 _/_", "w1118")
+labs = c("DJ-1 _/_ (Mutant)", "w1118 (Control)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+
+
+```
+
+
+```{r pBac_w1118}
+
+setwd('~/Evan_stuff/CURA_project/pBac_w1118/')
+
+file_path <- "pBac_w1118"
+mapper_file <- "call_mapper.tsv"
+
+  ## unweighted
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+flies_unifrac_table <- flies_unweighted %>% select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
+
+str(flies_unifrac_table)
+table(list(flies_unifrac_table$genotype)) # 2014 2016 2017
+table(list(flies_unifrac_table$sex))
+table(list(flies_unifrac_table$lab)) # E S (diet)
+table(list(flies_unifrac_table$genotype_class)) # E S (diet)
+table(list(flies_unifrac_table$vial_model)) # E S (starting genotype)
+table(list(flies_unifrac_table$donorID)) # T1 T2 T3
+table(list(flies_unifrac_table$collection_lab))  # M F
+table(list(flies_unifrac_table$num_flies))  # M F
+table(list(flies_unifrac_table$collector))  # M F
+table(list(flies_unifrac_table$comment2))  # M F
+
+
+## lab or orchard environment
+adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_unweighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+fig1_permSU <- tableGrob(round(fig1_Suw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "unweighted_Permanova_pbacw.jpg", units = "px", quality = 100)
+  plot(fig1_permSU)
+dev.off()
+
+    ## weighted
+flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
+
+adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
+fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "weighted_Permanova_pbacw.jpg", units = "px", quality = 100)
+  plot(fig1_permSW)
+dev.off()
+    ## bray curtis
+flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
+flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
+
+adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
+
+fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
+fig1_permSB <- tableGrob(round(fig1_Sb_permanova$aov.tab, 2), theme=ttheme_minimal())
+jpeg(h=800, w=1600, "braycurtis_Permanova_pbacw.jpg", units = "px", quality = 100)
+  plot(fig1_permSB)
+dev.off()
+
+#shannon
+shannon_file <- read.table(paste('core-metrics-results-',file_path,'/shannon_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+shannon_table <- shannon_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- shannon_table %>% group_by(genotype) %>% summarise(X, richness = mean(shannon_entropy)) %>% ungroup()
+
+shannon_table <- shannon_table %>% left_join(alpha, "X" = "X")
+shannon_table <- dplyr::select(shannon_table,X, genotype, genotype_class, richness, shannon_entropy)
+wilcox <- wilcox.test(shannon_table$shannon_entropy~shannon_table$genotype_class)
+shannon_table <- shannon_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, shannon_entropy, SEM = (sd(shannon_entropy) / sqrt(length(shannon_entropy)))) %>% ungroup()
+shannon_table <- dplyr::select(shannon_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+
+
+shannon_plot <- ggplot(shannon_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(shannon_table$richness-shannon_table$SEM)*.5),max(shannon_table$richness+shannon_table$SEM)*1.15)) +
+             scale_x_discrete(breaks=c("pBac{WH}ntc[f07259)", "w1118"), labels=c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+             labs(y="Richness",x=str_to_title(var1),title= paste0("Shannon Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+
+jpeg(h=800, w=1600, "shannon_plot_pbacw.jpg", units = "px", quality = 100)
+  plot(shannon_plot)
+dev.off()
+
+
+#ace
+ace_file <- read.table(paste('core-metrics-results-',file_path,'/ace_richness/alpha-diversity.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
+ace_table <- ace_file %>% left_join(map_file, by=c("X"="X.SampleID"))
+
+alpha <- ace_table %>% group_by(genotype) %>% summarise(X, richness = mean(ace)) %>% ungroup()
+
+ace_table <- ace_table %>% left_join(alpha, "X" = "X")
+ace_table <- dplyr::select(ace_table,X, genotype, genotype_class, richness, ace)
+wilcox <- wilcox.test(ace_table$ace~ace_table$genotype_class)
+ace_table <- ace_table %>% group_by(genotype) %>% summarise(X, genotype, genotype_class, richness, ace, SEM = (sd(ace) / sqrt(length(ace)))) %>% ungroup()
+ace_table <- dplyr::select(ace_table, genotype, genotype_class, richness, SEM) %>% unique()
+
+ace_plot <- ggplot(ace_table, aes(x=genotype, y=richness)) + 
+             geom_bar(position=position_dodge(), stat="identity") +
+             geom_errorbar(aes(ymin=richness+SEM, ymax=richness-SEM),
+                           width=.2, # Width of the error bars
+                           position=position_dodge(.9)) +
+             coord_cartesian(ylim=c((min(ace_table$richness-ace_table$SEM)*.5),max(ace_table$richness+ace_table$SEM)*1.15)) + 
+             scale_x_discrete(breaks=c("pBac{WH}ntc[f07259)", "w1118"), labels=c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")) +
+             theme_cowplot() +
+             theme(axis.text=element_text(size=14),
+                   panel.background = element_blank(),
+                   axis.line = element_line(), 
+                   axis.ticks=element_line(), 
+                   axis.title=element_text(size=16),
+                   title=element_text(size=20),
+                   legend.position = "none") +
+              labs(y="Richness",x=str_to_title(var1),title= paste0("Ace Richness (p-value: ", toString(round(wilcox$p.value, 3)), ")"))
+
+jpeg(h=800, w=1600, "ace_plot_pbacw.jpg", units = "px", quality = 100)
+  plot(ace_plot)
+dev.off()
+
+# 1A
+var1 = "genotype"
+var2 = "sex"
+taxonomic_level = "genus"
+rpa_in_chart = 0.015
+the_two_var = "onevar"
+the_id = "X.SampleID"
+plot_color = c("black","black","black","black","brown","green","blue","red")
+plot_order = c("Corynebacterium","Commensalibacter", "Leuconostoc", "Lactobacillaceae", "Enterococcus", "Lactobacillus", "Acetobacter")
+x_val = "genotype"
+read_depth = 1565
+map_path = "-call19"
+legend_position = "right"
+
+plot_2016S <- make_taxon_plots_1var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
+
+flies.labs <- c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+names(flies.labs) <- c("pBac{WH}ntc[f07259)", "w1118")
+plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
+  theme(
+      strip.text.x = element_text(
+        size = 8, color = "black"
+        )
+      )+ 
+  xlab("Fly Samples") + 
+  ylab("Fractional Abundance") +
+  labs(fill = "Order Level Taxon")
+jpeg(h=800, w=1600, "Taxon_genus_right_pbacw.jpg", units = "px", quality = 100)
+  plot(plot_2016S)
+dev.off()
+
+
+# plot_2016S + labs(x = "sample") + geom_bar(position = "stack") #strip.text
+# legend_position = "bottom"
+# plot_fig1legend <- g_legend(make_taxon_plots_condense_2var(file_path = file_path,	map_path = map_path, mapper_file = mapper_file, var1 = var1,var2 = var2,	taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "twovar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position))
+# 
+# plot(plot_fig1legend)
+
+folder_name = paste0(file_path, "/unweighted_unifrac")
+var1 = "genotype"
+var1_colors <-c("blue","red")
+title_name_add <- "unweighted Unifrac"
+legend_position = "bottom"
+
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+plot_uw2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_uw2016 <- plot_uw2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "unweighted_PCoA_pbacw.jpg", units = "px", quality = 100)
+  plot(plot_uw2016)
+dev.off()
+
+folder_name = paste0(file_path, "/weighted_unifrac")
+title_name_add <- "weighted Unifrac"
+plot_w2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_w2016 <- plot_w2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "weighted_PCoA_pbacw.jpg", units = "px", quality = 100)
+  plot(plot_w2016)
+dev.off()
+
+folder_name = paste0(file_path, "/bray_curtis")
+title_name_add <- "Bray Curtis"
+plot_bc2016 <- pcoa_1var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var1_colors=var1_colors, title_name_add=title_name_add, legend_position = legend_position)
+plot_bc2016 <- plot_bc2016 + scale_color_manual(name="Genotype", labels=labs, values=var1_colors) + 
+scale_fill_manual(name="Genotype", labels=labs, values=var1_colors)
+
+jpeg(h=800, w=1600, "braycurtis_PCoA_pbacw.jpg", units = "px", quality = 100)
+  plot(plot_bc2016)
+dev.off()
+
+# legend_position = "bottom"
+# plot_wuwlegend <- g_legend(pcoa_2var(folder_name=folder_name, mapper_file = mapper_file, var1=var1, var2=var2, var1_colors=var1_colors, var2_shape=var2_shape, title_name_add=title_name_add, legend_position = legend_position))
+# 
+# jpeg(h=1200, w=1600, "Figure_Wol.jpg", units = "px", quality = 50, pointsize = 1)
+# 	grid.arrange(	
+# 		plot_2016S, plot_fig1legend, 
+# 		plot_bc2016,plot_uw2016, plot_w2016,
+# 		plot_wuwlegend,
+# 		fig1_permSB, fig1_permSU, fig1_permSW, 
+# 		widths = c(1,1,1),	
+# 		heights = c(2,2,.3,1.5),	
+# 		layout_matrix=rbind(		
+# 			c(1,1,2),		
+# 			c(3,4,5),
+# 			c(6,6,6),
+# 			c(7,8,9))
+# 		)
+# dev.off()
+
+file_path = file_path
+var1 = "genotype"
+var2 = "genotype"
+var3 = "genotype"
+the_id = "X.SampleID"
+newcol <- "newcol"
+
+main.var="genotype"
+adj.formula= "genotype"
+random.formula = NULL #"~1|vial_num"
+multcorr="BH"
+sig=0.05
+prev.cut=0.9
+Group = "genotype"
+# taxonomic_level = "X.OTU.ID"
+ taxonomic_level = "species"
+taxonomic_level = "genus"
+# taxonomic_level = "family"
+# taxonomic_level = "order"
+# taxonomic_level = "class"
+ancom_colors = c("black", "brown", "black")
+breaks = c("pBac{WH}ntc[f07259)", "w1118")
+labs = c("pBac{WH}ntc[f07259) (Mutant)", "w1118 (Control)")
+make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+```
