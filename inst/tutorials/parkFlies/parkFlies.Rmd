@@ -1706,29 +1706,29 @@ plot_bc2016
 
 ```{r ancomBelM, exercise=TRUE}
 
-file_path <- "bellen_mutants"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
-
-var1 = "genotype"
-var2 = "genotype"
-var3 = "genotype"
-the_id = "X.SampleID"
-newcol <- "newcol"
-main.var="genotype"
-adj.formula= "genotype"
-map_path = "-call19"
-random.formula = NULL #"~1|vial_num"
-multcorr="BH"
-sig=0.05
-prev.cut=0.9
-Group = "genotype"
-taxonomic_level = "genus"
-ancom_colors = c("green")
-breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
-labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
-
-make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+# file_path <- "bellen_mutants"
+# urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/bellen_mutants/"
+# mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
+# 
+# var1 = "genotype"
+# var2 = "genotype"
+# var3 = "genotype"
+# the_id = "X.SampleID"
+# newcol <- "newcol"
+# main.var="genotype"
+# adj.formula= "genotype"
+# map_path = "-call19"
+# random.formula = NULL #"~1|vial_num"
+# multcorr="BH"
+# sig=0.05
+# prev.cut=0.9
+# Group = "genotype"
+# taxonomic_level = "genus"
+# ancom_colors = c("green")
+# breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+# labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+# 
+# make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
 ```
 
 ## iPLAs (No Control)
@@ -2026,29 +2026,29 @@ plot_bc2016
 
 ```{r ancomiPLAnc, exercise=TRUE}
 
-file_path <- "iPLA_noControl"
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/iPLA_noControl/"
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
-
-var1 = "lab"
-var2 = "lab"
-var3 = "lab"
-the_id = "X.SampleID"
-newcol <- "newcol"
-main.var="lab"
-adj.formula= "lab"
-map_path = "-call19"
-random.formula = NULL #"~1|vial_num"
-multcorr="BH"
-sig=0.05
-prev.cut=0.9
-Group = "lab"
-taxonomic_level = "genus"
-ancom_colors = c("yellow")
-breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
-labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
-
-make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
+# file_path <- "iPLA_noControl"
+# urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/iPLA_noControl/"
+# mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
+# 
+# var1 = "lab"
+# var2 = "lab"
+# var3 = "lab"
+# the_id = "X.SampleID"
+# newcol <- "newcol"
+# main.var="lab"
+# adj.formula= "lab"
+# map_path = "-call19"
+# random.formula = NULL #"~1|vial_num"
+# multcorr="BH"
+# sig=0.05
+# prev.cut=0.9
+# Group = "lab"
+# taxonomic_level = "genus"
+# ancom_colors = c("yellow")
+# breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+# labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+# 
+# make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
 ```
 
 ## iPLAs
