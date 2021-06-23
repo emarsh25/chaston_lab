@@ -1,6 +1,6 @@
 make_ancom2_plots <- function (urlpath = urlpath, file_path, map_path="", mapper_file=mapper_file, taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, random.formula=NULL, color = color, breaks = breaks, labs = labs) {
 
-  taxon_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/"
+  taxon_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/"
   otu_table <- read.table(url(paste(urlpath,'core-metrics-results-',file_path,'/rarefied_table.txt',sep="")), comment.char="", header=T, sep="\t", fill=T, skip=1)%>%
     left_join(read.csv(url(paste0(taxon_url,'taxonomy',map_path,'/taxonomy_forR.csv'))), by=c("X.OTU.ID"="Feature.ID"))
 
