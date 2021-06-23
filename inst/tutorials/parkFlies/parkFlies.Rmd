@@ -48,7 +48,13 @@ source(url("https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Beginning Bash Work
+## Introduction
+
+### Welcome to the Parkinson Flies Tutorial
+
+In this tutorial you will see how all figures were created for the Parkinson Fly Comparison Paper. Feel free to experiment with the tutorial by changing the taxon levels or other similar changes.
+
+## Bash Work
 
 ### Using QIIME2
 
@@ -1704,6 +1710,8 @@ plot_bc2016
 
 ### Bellen Mutants ANCOM report (genus level)
 
+*commented out because it does not create a figure*
+
 ```{r ancomBelM, exercise=TRUE}
 
 # file_path <- "bellen_mutants"
@@ -2023,6 +2031,8 @@ plot_bc2016
 ```
 
 ### iPLAs (No Control) ANCOM report (genus level)
+
+*commented out because it does not create a figure*
 
 ```{r ancomiPLAnc, exercise=TRUE}
 
