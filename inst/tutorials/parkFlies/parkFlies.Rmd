@@ -1930,23 +1930,23 @@ file_path <- "iPLA_noControl"
 urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/No_Wol/iPLA_noControl/"
 mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Files/CURA_project/call_mapper.tsv"
 
-var1 = "genotype"
-var2 = "sex"
+var1 = "lab"
+var2 = "lab"
 taxonomic_level = "genus"
 rpa_in_chart = 0.015
 the_two_var = "twovar"
 the_id = "X.SampleID"
 plot_color = c("black","yellow", "brown","blue","red")
 plot_order = c("Pasteurellales" ,"Lactobacillaceae", "Lactobacillus", "Acetobacter")
-x_val = "genotype"
+x_val = "lab"
 read_depth = 1565
 map_path = "-call19"
 legend_position = "right"
 
 plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
 
-flies.labs <- c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
-names(flies.labs) <- c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
+flies.labs <- c("Bloomington", "Bellen")
+names(flies.labs) <- c("Bloomington", "")
 
 plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
   theme(
@@ -2055,8 +2055,8 @@ plot_bc2016
 # Group = "lab"
 # taxonomic_level = "genus"
 # ancom_colors = c("yellow")
-# breaks = c("iPLA2-VIA[Delta174]", "iPLA2-VIA[Delta192]")
-# labs = c("iPLA2-VIA[Delta174] (Mutant)", "iPLA2-VIA[Delta192] (Mutant)")
+# breaks = c("Bloomington", "Bellen")
+# labs = c("Bloomington", "Bellen")
 # 
 # make_ancom2_plots(urlpath = urlfile, file_path, map_path=map_path, mapper_file=url(mapper_url), taxonomic_level=taxonomic_level,var1=var1,var2=var2,var3=var3,newcol="newcol", the_id = "X.SampleID", main.var=main.var, adj.formula=adj.formula, random.formula = random.formula, repeat.var = repeat.var, multcorr=multcorr, sig=sig, prev.cut=prev.cut, Group = Group, color = ancom_colors, breaks = breaks, labs = labs)
 ```
