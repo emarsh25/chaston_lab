@@ -53,8 +53,8 @@ source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/ancom_tes
 source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/ancom_v2.0.R")
 
 
-usethis::create_package("~/Evan_stuff/CURA_project/tutorial")
-
+devtools::install_github("emarsh25/chaston_lab@master")
+learnr::run_tutorial("parkFlies", "parkFlies")
 ```
 
 ```{bash}

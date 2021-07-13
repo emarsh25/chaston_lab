@@ -1946,7 +1946,7 @@ legend_position = "right"
 plot_2016S <- make_taxon_plots_1var(file_path = file_path, urlpath = urlfile,	map_path = map_path, mapper_file = mapper_url, var1 = var1, taxonomic_level = taxonomic_level,	rpa_in_chart = rpa_in_chart,	the_two_var = "onevar",	the_id = "X.SampleID",	plot_color = plot_color,	plot_order = plot_order,	x_val = x_val,read_depth = read_depth, legend_position = legend_position)
 
 flies.labs <- c("Bloomington", "Bellen")
-names(flies.labs) <- c("Bloomington", "")
+names(flies.labs) <- c("Bloomington", "Bellen")
 
 plot_2016S <- plot_2016S + facet_grid(.~get(var1), drop = TRUE, space = "free", scales = "free", labeller = labeller(.cols = flies.labs)) +
   theme(
