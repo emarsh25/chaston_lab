@@ -43,14 +43,14 @@ library(roxygen2)
 library(learnr)
 
 
-source("~/Evan_stuff/16sscripts/make_taxon_plots_condense_2var_0.0.2.R")
-source("~/Evan_stuff/16sscripts/g_legend.R")
-source("~/Evan_stuff/16sscripts/pcoa_2var_0.0.2.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/make_taxon_plots_condense_2var_0.0.2.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/g_legend.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/pcoa_2var_0.0.2.R")
 # source("~/Evan_stuff/16sscripts/make_distance_plot_0.0.2.R")
 # source("~/Evan_stuff/16sscripts/ANCOM_updated_code.R")
-source("~/Evan_stuff/16sscripts/make_ancom_plots_0.0.2.R")
-source("~/Evan_stuff/16sscripts/ancom_tests.R")
-source("~/Evan_stuff/16sscripts/ancom_v2.0.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/make_ancom_plots_0.0.2.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/ancom_tests.R")
+source("~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/16sscripts/ancom_v2.0.R")
 
 
 usethis::create_package("~/Evan_stuff/CURA_project/tutorial")
@@ -158,7 +158,7 @@ bash ../16sscripts/standard_qiime3.sh $name""_noW $name looking_for_core_control
 
 #UCLA
 ```{r UCLA}
-setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/UCLA/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/UCLA/')
 file_path <- "UCLA"
 mapper_file <- "call_mapper.tsv"
 
@@ -182,7 +182,8 @@ table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
 
-adonis2(flies_unweighted_dm ~ genotype * vial_model, data= flies_unifrac_table, permutations=1000, by= 'terms')
+table <- adonis2(flies_unweighted_dm ~ genotype * vial_model, data= flies_unifrac_table, permutations=1000, by= 'terms')
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * sex * collection, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
@@ -199,7 +200,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ genotype * sex * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -212,7 +214,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -414,21 +417,15 @@ ANCOM()
 ```
 
 ```{r Stanford}
-urlfile = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/"
 
-mapper_url = "https://raw.githubusercontent.com/emarsh25/chaston_lab/master/Park-Proj/Evan_stuff/CURA_project/call_mapper.tsv"
-
-my_data <- read_tsv(url(urlfile))
-
-
-setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/Stanford/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/Stanford/')
 file_path <- "Stanford"
 mapper_file <- "call_mapper.tsv"
 
   ## unweighted
-flies_unweighted <- read.table(url(paste(urlfile,'core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep="")), header=T, sep="\t") %>% mutate(X=as.character(X))
+flies_unweighted <- read.table(paste('core-metrics-results-',file_path,'/unweighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t") %>% mutate(X=as.character(X))
 flies_unweighted_dm <- as.dist(flies_unweighted[,2:dim(flies_unweighted)[2]])
-map_file <- read.table(url(mapper_url),comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
+map_file <- read.table(mapper_file,comment.char = "", header=T, fill=T, sep="\t") %>% mutate(X.SampleID = gsub(pattern = "-",replacement = "-",x = X.SampleID))
 flies_unifrac_table <- flies_unweighted %>% dplyr::select(X) %>% left_join(map_file, by=c("X"="X.SampleID")) %>% droplevels()
 
 str(flies_unifrac_table)
@@ -444,7 +441,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -456,7 +454,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -468,7 +467,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -673,7 +673,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 ```
 
 ```{r Bellen}
-setwd('~/Evan_stuff/CURA_project/No_Wol/Bellen/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/Bellen/')
 file_path <- "Bellen"
 mapper_file <- "call_mapper.tsv"
 
@@ -696,7 +696,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -709,7 +710,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -721,7 +723,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -923,7 +926,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 ```
 
 ```{r bellen_mutant}
-setwd('~/Park-Proj/Evan_stuff/CURA_project/No_Wol/bellen_mutants/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/bellen_mutants/')
 file_path <- "bellen_mutants"
 mapper_file <- "call_mapper.tsv"
 
@@ -946,7 +949,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -959,7 +963,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
 fig1_permSW <- tableGrob(round(fig1_Sw_permanova$aov.tab, 2), theme=ttheme_minimal())
@@ -969,7 +974,8 @@ plot(fig1_permSW)
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model + collection, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -1096,7 +1102,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 ```
 
 ```{r Pallanck}
-setwd('~/Evan_stuff/CURA_project/No_Wol/Pallanck/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/Pallanck/')
 file_path <- "Pallanck"
 mapper_file <- "call_mapper.tsv"
 
@@ -1119,7 +1125,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -1132,7 +1139,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -1144,7 +1152,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -1355,7 +1364,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 
 
 ```{r All (Excluding Bloomington)}
-setwd('~/Evan_stuff/CURA_project/No_Wol/All/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/All/')
 file_path <- "All"
 mapper_file <- "call_mapper.tsv"
 
@@ -1380,7 +1389,8 @@ table(list(flies_unifrac_table$comment2))  # M F
 
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -1397,7 +1407,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -1410,7 +1421,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ lab * genotype_class * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype_class * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -2244,7 +2256,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 ```
 
 ```{r iPLA_noControls}
-setwd('~/Evan_stuff/CURA_project/No_Wol/iPLA_noControl/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/iPLA_noControl/')
 
 file_path <- "iPLA_noControl"
 mapper_file <- "call_mapper.tsv"
@@ -2268,7 +2280,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ genotype * vial_model * sex, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
@@ -2281,7 +2294,8 @@ dev.off()
 flies_weighted <- read.table(paste('core-metrics-results-',file_path,'/weighted_unifrac_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_weighted_dm <- as.dist(flies_weighted[,2:dim(flies_weighted)[2]])
 
-adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_weighted_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_weighted_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sw_permanova <- adonis(flies_weighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection, flies_unifrac_table, permutations = 1000)
@@ -2293,7 +2307,8 @@ dev.off()
 flies_bc <- read.table(paste('core-metrics-results-',file_path,'/bray_curtis_distance_matrix/distance-matrix.tsv',sep=""), header=T, sep="\t")
 flies_bc_dm <- as.dist(flies_bc[,2:dim(flies_bc)[2]])
 
-adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_bc_dm ~ lab * genotype * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_bc_dm ~ genotype * sex * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Sb_permanova <- adonis(flies_bc_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations = 1000)
@@ -2495,7 +2510,7 @@ make_ancom2_plots(file_path, map_path=map_path, mapper_file=mapper_file, taxonom
 ```
 
 ```{r iPLA (with control)}
-setwd('~/Evan_stuff/CURA_project/No_Wol/iPLA/')
+setwd('~/Park-Proj/Evan_stuff/parkFlies/Files/CURA_project/No_Wol/iPLA/')
 file_path <- "iPLA"
 mapper_file <- "call_mapper.tsv"
 
@@ -2518,7 +2533,8 @@ table(list(flies_unifrac_table$collector))  # M F
 table(list(flies_unifrac_table$comment2))  # M F
 
 ## lab or orchard environment
-adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
+table <- adonis2(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
+round(table, 2)
 adonis(flies_unweighted_dm ~ lab * genotype_class * vial_model, flies_unifrac_table, permutations=1000)
 
 fig1_Suw_permanova <- adonis(flies_unweighted_dm ~ lab * genotype * vial_model, strata=flies_unifrac_table$collection , flies_unifrac_table, permutations=1000)
